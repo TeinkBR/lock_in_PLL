@@ -1,41 +1,52 @@
-module feedback_lockin_amplifier (
-  input clk,                     // clock signal
-  input reset_n,                 // reset signal
-  input signal_in,               // input signal to be phase shifted
-  input feedback_in,             // feedback signal from the output
-  output reg signal_out          // output signal with 90 degree phase shift
+module amplifier (
+    input clk,              // System clock
+    input reset,            // Reset signal
+    input signed [7:0] in_signal,  // Input signal from signal generator
+    output reg signed [7:0] out_signal // Output signal
 );
 
-reg [7:0] phase_reg;             // 8-bit register to store phase shift
-reg [7:0] feedback_accumulator;  // 8-bit register to accumulate feedback signal
-reg [7:0] feedback_gain;         // 8-bit register to store feedback gain
-wire feedback_out;               // output feedback signal
+parameter F_REF = 50;      // Reference frequency (in MHz)
+parameter F_OUT = 100;     // Desired output frequency (in MHz)
+parameter K_P = 0.05;      // Proportional gain
+parameter K_I = 0.005;     // Integral gain
 
-// initialize registers
-initial begin
-  phase_reg = 8'b00000000;
-  feedback_accumulator = 8'b00000000;
-  feedback_gain = 8'b00001000;   // set initial feedback gain to 8
-  signal_out = 1'b0;
+reg [7:0] phase;           // Phase accumulator
+reg [7:0] delta;           // Phase increment
+reg [15:0] error_accum;    // Error accumulator for PI controller
+reg [7:0] proportional;    // Proportional term of PI controller
+reg [7:0] integral;        // Integral term of PI controller
+
+// Calculate delta (phase increment)
+always @* begin
+    delta = $signed($pow(2, 8)) * 2 * $sin((2 * $pi * F_OUT / F_REF) / $pow(2, 8));
 end
 
-// calculate feedback signal
-assign feedback_out = $signed({1'b1, signal_out}) * $signed({1'b0, feedback_gain});
-
-// lock-in amplifier module instantiation
-lockin_amplifier lockin_amp (
-  .clk(clk),
-  .reset_n(reset_n),
-  .signal_in(signal_in),
-  .signal_out(signal_out)
-);
-
-// feedback loop
-always @(posedge clk) begin
-  if (reset_n) begin
-    feedback_accumulator <= feedback_accumulator + feedback_out;
-    feedback_gain <= feedback_gain + feedback_accumulator;
-  end
+// Generate output signal with phase lock and amplification
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        phase <= 0;
+        out_signal <= 0;
+        error_accum <= 0;
+        proportional <= 0;
+        integral <= 0;
+    end
+    else begin
+        // Calculate error and update error accumulator
+        reg [7:0] error = in_signal - out_signal;
+        error_accum <= error_accum + error;
+        
+        // Calculate proportional and integral terms of PI controller
+        proportional <= K_P * error;
+        integral <= K_I * error_accum;
+        
+        // Calculate phase increment with feedback from PI controller
+        reg [7:0] feedback = proportional + integral;
+        delta <= delta + feedback;
+        
+        // Update phase accumulator and output signal
+        phase <= phase + delta;
+        out_signal <= $signed(2 * in_signal * $cos(phase));
+    end
 end
 
 endmodule
