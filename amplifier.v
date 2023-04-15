@@ -1,20 +1,20 @@
 module amplifier (
-    input clk,              // System clock
-    input reset,            // Reset signal
-    input signed [7:0] in_signal,  // Input signal from signal generator
-    output reg signed [7:0] out_signal // Output signal
+    input clk,                       // System clock
+    input reset,                     // Reset signal
+    input signed [7:0] in_signal,    // Input signal from signal generator
+    output reg signed [7:0] out_signal// Output signal
 );
 
-parameter F_REF = 50;      // Reference frequency (in MHz)
-parameter F_OUT = 100;     // Desired output frequency (in MHz)
-parameter K_P = 0.05;      // Proportional gain
-parameter K_I = 0.005;     // Integral gain
+parameter F_REF = 50;                // Reference frequency (in MHz)
+parameter F_OUT = 100;               // Desired output frequency (in MHz)
+parameter K_P = 0.05;                // Proportional gain
+parameter K_I = 0.005;               // Integral gain
 
-reg [7:0] phase;           // Phase accumulator
-reg [7:0] delta;           // Phase increment
-reg [15:0] error_accum;    // Error accumulator for PI controller
-reg [7:0] proportional;    // Proportional term of PI controller
-reg [7:0] integral;        // Integral term of PI controller
+reg [7:0] phase;                     // Phase accumulator
+reg [7:0] delta;                     // Phase increment
+reg [15:0] error_accum;              // Error accumulator for PI controller
+reg [7:0] proportional;              // Proportional term of PI controller
+reg [7:0] integral;                  // Integral term of PI controller
 
 // Calculate delta (phase increment)
 always @* begin
@@ -50,3 +50,4 @@ always @(posedge clk or posedge reset) begin
 end
 
 endmodule
+ 
